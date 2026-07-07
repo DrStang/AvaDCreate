@@ -113,6 +113,7 @@ function sortLink($label,$col){
                 <a class="tab" href="/admin/products.php">🧾 Manage Products</a>
                 <a class="tab " href="/admin/analytics.php"> Analytics</a>
                 <a class="tab active" href="/admin/orders.php">📃 Orders</a>
+                <a class="tab" href="/admin/email_customers.php">✉ Email Customers</a>
                 <a class="tab" href="/admin/product_edit.php">➕ Add Product</a>
             </div>
         </div>

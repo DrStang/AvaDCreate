@@ -6,8 +6,31 @@ require_once __DIR__.'/../lib/util.php';
 
 $nav_active = 'analytics';
 include __DIR__.'/_style.php';
-include __DIR__.'/../partials/header.php';
 ?>
+<div class="admin-header">
+    <div class="admin-wrap">
+        <div class="admin-brand">✨ Ava D Creates · Admin</div>
+        <a class="btn-outline" href="/admin/logout.php">Logout</a>
+    </div>
+</div>
+
+<div class="admin-hero">
+    <div class="admin-hero-inner">
+        <div class="admin-hero-card">
+            <div class="admin-title">📈 Detailed Analytics</div>
+            <div class="admin-actions">
+                <a class="tab" href="/admin/dashboard.php">📊 Overview</a>
+                <a class="tab" href="/admin/products.php">🧾 Manage Products</a>
+                <a class="tab active" href="/admin/analytics.php">📈 Analytics</a>
+                <a class="tab" href="/admin/orders.php">📃 Orders</a>
+                <a class="tab" href="/admin/email_customers.php">✉ Email Customers</a>
+                <a class="tab" href="/admin/product_edit.php">➕ Add Product</a>
+
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class = "analytics-page">
     <style>
         /* === Isolate analytics page from global admin theme === */
@@ -471,4 +494,3 @@ function hjson($s) {
     </div>
 </div>
 
-<?php include __DIR__.'/../partials/footer.php'; ?>

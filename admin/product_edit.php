@@ -6,7 +6,6 @@ require_once __DIR__.'/../config.php';
 
 $nav_active = 'products';
 include __DIR__.'/_style.php';
-include __DIR__.'/../partials/header.php';
 
 function get_categories(): array {
     // prefer categories table
@@ -17,13 +16,14 @@ function get_categories(): array {
     } catch (\Throwable $e) {}
     // fallback to enum
     try {
-        $col = db()->query("SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-                            WHERE TABLE_SCHEMA = DATABASE()
-                              AND TABLE_NAME='products'
-                              AND COLUMN_NAME='category'")->fetchColumn();
-        if ($col && str_starts_with(strtolower($col), 'enum(')) {
-            $inside = trim(substr($col, 5, -1));
-            $vals = array_map(fn($s)=>trim($s, " '\""), explode(',', $inside));
+        $sql = "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'products'
+                  AND COLUMN_NAME = 'category'";
+        $st = db()->query($sql);
+        $enum = $st->fetchColumn();
+        if ($enum && preg_match("/^enum\\('(.*)'\\)$/i", $enum, $m)) {
+            $vals = explode("','", $m[1]);
             return array_map(fn($v)=>['val'=>$v, 'label'=>ucfirst($v)], $vals);
         }
     } catch (\Throwable $e) {}
@@ -36,25 +36,57 @@ function get_categories(): array {
 $id = (int)($_GET['id'] ?? 0);
 $p  = null;
 if ($id) {
-    $st = db()->prepare("SELECT * FROM products WHERE id=?"); $st->execute([$id]);
-    $p = $st->fetch(); if (!$p) die('Not found');
+    $st = db()->prepare("SELECT * FROM products WHERE id=?");
+    $st->execute([$id]);
+    $p = $st->fetch();
+    if (!$p) die('Not found');
 }
 
-// images (schema: image_url)
+// Load existing gallery images (if table exists)
 $images = [];
 if ($id) {
     try {
-        $iq = db()->prepare("SELECT id, image_url, is_primary, sort_order FROM product_images WHERE product_id=? ORDER BY is_primary DESC, sort_order ASC, id ASC");
-        $iq->execute([$id]); $images = $iq->fetchAll();
-    } catch (\Throwable $e) { $images = []; }
+        $iq = db()->prepare("SELECT id, image_url, is_primary, sort_order 
+                             FROM product_images 
+                             WHERE product_id=? 
+                             ORDER BY is_primary DESC, sort_order ASC, id ASC");
+        $iq->execute([$id]);
+        $images = $iq->fetchAll();
+    } catch (\Throwable $e) {
+        $images = [];
+    }
 }
 ?>
-<div class="admin-wrap">
-    <div class="admin-header">
-        <div class="admin-brand"><?= $id ? 'Edit Product' : 'Add Product' ?></div>
-        <div class="admin-actions">
-            <a class="btn-outline" href="/admin/products.php">Back to list</a>
+<div class="admin-header">
+    <div class="admin-wrap">
+        <div class="admin-brand">✨ Ava D Creates · Admin</div>
+        <a class="btn-outline" href="/admin/logout.php">Logout</a>
+    </div>
+</div>
+
+<div class="admin-hero">
+    <div class="admin-hero-inner">
+        <div class="admin-hero-card">
+            <div class="admin-title"><?= $id ? '✏️ Edit Product' : '➕ Add Product' ?></div>
+            <div class="admin-actions">
+                <a class="tab" href="/admin/dashboard.php">📊 Stats</a>
+                <a class="tab" href="/admin/products.php">🧾 Manage Products</a>
+                <a class="tab" href="/admin/analytics.php">Analytics</a>
+                <a class="tab" href="/admin/orders.php">📃 Orders</a>
+                <a class="tab active" href="<?= $id ? '/admin/product_edit.php?id='.(int)$id : '/admin/product_edit.php' ?>">
+                    <?= $id ? '✏️ Edit Product' : '➕ Add Product' ?>
+                </a>
+            </div>
         </div>
+    </div>
+</div>
+
+<div class="admin-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="admin-title" style="margin:0;font-size:1.2rem;">
+            <?= $id ? 'Editing product #'.(int)$id : 'Add a new product' ?>
+        </div>
+        <a class="btn-outline" href="/admin/products.php">← Back to products</a>
     </div>
 
     <form method="post" action="/admin/product_save.php" enctype="multipart/form-data">
@@ -71,7 +103,8 @@ if ($id) {
                         <input name="name" value="<?= h($p['name'] ?? '') ?>" required>
                     </label>
                     <label>Price ($)<br>
-                        <input name="price" type="number" step="0.01" min="0" value="<?= isset($p['price'])? h($p['price']) : '' ?>" required>
+                        <input name="price" type="number" step="0.01" min="0"
+                               value="<?= isset($p['price'])? h($p['price']) : '' ?>" required>
                     </label>
                 </div>
 
@@ -93,6 +126,19 @@ if ($id) {
                             <option value="0" <?= (($p['featured']??0)?'':'selected') ?>>No</option>
                             <option value="1" <?= (($p['featured']??0)?'selected':'') ?>>Yes</option>
                         </select>
+                    </label>
+                </div>
+
+                <div id="bracelet-style-row"
+                     style="display:<?= (($p['category'] ?? '') === 'bracelet') ? 'block' : 'none' ?>;margin-top:8px">
+                    <label>Bracelet Style<br>
+                        <?php $bt = $p['bracelet_type'] ?? ''; ?>
+                        <select name="bracelet_type">
+                            <option value="">(Not set)</option>
+                            <option value="clay"   <?= $bt === 'clay'   ? 'selected' : '' ?>>Clay beads</option>
+                            <option value="sets" <?= $bt === 'sets' ? 'selected' : '' ?>>Sets</option>
+                        </select>
+                        <small style="color:#6b7280">Only used for bracelets – leave blank for other categories.</small>
                     </label>
                 </div>
 
@@ -125,49 +171,50 @@ if ($id) {
                     </div>
                     <h3 style="margin:12px 0 4px 0"><?= h($p['name'] ?? 'New product') ?></h3>
                     <?php if (isset($p['price'])): ?>
-                        <div style="display:inline-block;background:#efe3ff;color:#4c1d95;padding:6px 10px;border-radius:999px;border:1px solid #e9d5ff;font-weight:600">$<?= money((float)$p['price']) ?></div>
+                        <div style="display:inline-block;background:#e9d5ff;color:#4c1d95;border-radius:999px;padding:4px 10px;font-weight:600">$<?= money((float)$p['price']) ?></div>
                     <?php endif; ?>
-                    <div style="margin-top:10px;color:#6b7280"><?= nl2br(h($p['description'] ?? '')) ?></div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Images manager (product_images) -->
-        <div class="section card">
-            <div class="admin-title">Images</div>
-            <?php if ($images): ?>
-                <div style="display:flex;gap:12px;flex-wrap:wrap">
-                    <?php foreach ($images as $im): ?>
-                        <div style="border:1px solid #eee;border-radius:12px;padding:8px;width:160px">
-                            <div style="width:100%;height:110px;border-radius:10px;overflow:hidden;background:#fafafa;display:flex;align-items:center;justify-content:center">
-                                <img src="<?= h($im['image_url']) ?>" alt="" style="max-width:100%;max-height:100%;object-fit:cover">
-                            </div>
-                            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-                                <?php if ($im['is_primary']): ?>
-                                    <span style="font-size:12px;color:#065f46;background:#e9ffe6;border:1px solid #bbf7d0;border-radius:999px;padding:3px 8px">Primary</span>
-                                <?php else: ?>
-                                    <a class="btn-outline" href="/admin/product_image_primary.php?image_id=<?= (int)$im['id'] ?>&product_id=<?= (int)($p['id'] ?? 0) ?>">Make Primary</a>
-                                <?php endif; ?>
-                                <a class="btn-outline" href="/admin/product_image_delete.php?image_id=<?= (int)$im['id'] ?>&product_id=<?= (int)($p['id'] ?? 0) ?>" onclick="return confirm('Delete this image?')">Delete</a>
-                            </div>
+                <?php if ($images): ?>
+                    <div style="margin-top:16px">
+                        <div class="admin-title" style="font-size:14px;margin-bottom:6px">Existing Images</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px">
+                            <?php foreach ($images as $im): ?>
+                                <div style="border:1px solid #eee;border-radius:12px;padding:8px">
+                                    <div style="height:120px;border-radius:10px;overflow:hidden;margin-bottom:6px;background:#fafafa;display:flex;align-items:center;justify-content:center">
+                                        <img src="<?= h($im['image_url']) ?>" alt="" style="max-width:100%;max-height:100%;object-fit:cover">
+                                    </div>
+                                    <div style="font-size:12px;margin-bottom:6px">
+                                        ID #<?= (int)$im['id'] ?><?= $im['is_primary'] ? ' · Primary' : '' ?>
+                                    </div>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                        <?php if (!$im['is_primary']): ?>
+                                            <a class="btn-outline" href="/admin/product_make_primary.php?id=<?= (int)$im['id'] ?>&product_id=<?= (int)($p['id'] ?? 0) ?>">Make Primary</a>
+                                        <?php endif; ?>
+                                        <a class="btn-outline" href="/admin/product_image_delete.php?id=<?= (int)$im['id'] ?>&product_id=<?= (int)($p['id'] ?? 0) ?>" onclick="return confirm('Delete this image?')">Delete</a>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div style="color:#6b7280">No images uploaded yet.</div>
-            <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div style="color:#6b7280;margin-top:8px">No images uploaded yet.</div>
+                <?php endif; ?>
 
-            <div style="margin-top:12px">
-                <label>Upload images<br>
-                    <input type="file" name="images[]" accept="image/*" multiple>
-                </label>
-                <div id="preview" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px"></div>
+                <div style="margin-top:12px">
+                    <label>Upload images<br>
+                        <input type="file" name="images[]" accept="image/*" multiple>
+                    </label>
+                    <div id="preview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px"></div>
+                </div>
             </div>
         </div>
 
-        <div class="section" style="display:flex;gap:10px">
-            <button class="btn" type="submit">Save</button>
-            <a class="btn-outline" href="/admin/products.php">Cancel</a>
+        <div class="section" style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px">
+            <?php if ($id): ?>
+                <a class="btn-outline" href="/product.php?id=<?= (int)$id ?>" target="_blank">View Live</a>
+            <?php endif; ?>
+            <button class="btn" type="submit">💾 Save Product</button>
         </div>
     </form>
 </div>
@@ -188,6 +235,16 @@ if ($id) {
             r.readAsDataURL(f);
         });
     });
-</script>
 
-<?php include __DIR__.'/../partials/footer.php'; ?>
+    (function() {
+        const cat = document.querySelector('select[name="category"]');
+        const row = document.getElementById('bracelet-style-row');
+        if (!cat || !row) return;
+        function updateBraceletRow() {
+            row.style.display = (cat.value === 'bracelet') ? 'block' : 'none';
+        }
+        cat.addEventListener('change', updateBraceletRow);
+        updateBraceletRow();
+    })();
+
+</script>

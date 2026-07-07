@@ -9,6 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !csrf_ok()) die('Bad request');
 $id    = (int)($_POST['id'] ?? 0);
 $name  = trim($_POST['name'] ?? '');
 $cat   = $_POST['category'] ?? 'bracelet';
+$bracelet_type = $_POST['bracelet_type'] ?? '';
+if ($bracelet_type !== 'clay' && $bracelet_type !== 'sets') {
+    $bracelet_type = null;
+}
+if ($cat !== 'bracelet') {
+    $bracelet_type = null;
+}
 $price = (float)($_POST['price'] ?? 0);
 $stock = (int)($_POST['stock'] ?? 0);
 $featured = !empty($_POST['featured']) ? 1 : 0;
@@ -20,17 +27,17 @@ $image_url = null;
 if ($id) {
     // update
     if ($image_url) {
-        $sql = "UPDATE products SET name=?, category=?, price=?, description=?, stock=?, featured=?, image_url=?, updated_at=NOW() WHERE id=?";
-        db()->prepare($sql)->execute([$name,$cat,$price,$desc,$stock,$featured,$image_url,$id]);
+        $sql = "UPDATE products SET name=?, category=?, bracelet_type=?, price=?, description=?, stock=?, featured=?, image_url=?, updated_at=NOW() WHERE id=?";
+        db()->prepare($sql)->execute([$name,$cat,$bracelet_type,$price,$desc,$stock,$featured,$image_url,$id]);
         $pid = $id;
     } else {
-        $sql = "UPDATE products SET name=?, category=?, price=?, description=?, stock=?, featured=?, updated_at=NOW() WHERE id=?";
-        db()->prepare($sql)->execute([$name,$cat,$price,$desc,$stock,$featured,$id]);
+        $sql = "UPDATE products SET name=?, category=?, bracelet_type=?, price=?, description=?, stock=?, featured=?, updated_at=NOW() WHERE id=?";
+        db()->prepare($sql)->execute([$name,$cat,$bracelet_type,$price,$desc,$stock,$featured,$id]);
     }
 } else {
     // insert
-    $sql = "INSERT INTO products (name,category,price,description,stock,featured,image_url) VALUES (?,?,?,?,?,?,?)";
-    db()->prepare($sql)->execute([$name,$cat,$price,$desc,$stock,$featured,$image_url]);
+    $sql = "INSERT INTO products (name,category,bracelet_type,price,description,stock,featured,image_url) VALUES (?,?,?,?,?,?,?,?)";
+    db()->prepare($sql)->execute([$name,$cat,$bracelet_type,$price,$desc,$stock,$featured,$image_url]);
     $pid = (int)db()->lastInsertId();
 }
 
