@@ -168,6 +168,11 @@ if (!$p) { echo "<p>Product not found.</p>"; include __DIR__.'/../partials/foote
                     </div>
                 <?php endif; ?>
                 <div class="price-pill" style="margin:6px 0">$<?= money((float)$p['price']) ?></div>
+                <?php if ($p['category'] === 'bracelet' && !empty($p['bracelet_type'])): ?>
+                    <p style="margin:4px 0 8px 0;color:#6b7280;font-size:0.9rem">
+                        <?= $p['bracelet_type'] === 'clay' ? 'Clay beads bracelet' : 'Bracelet sets' ?>
+                    </p>
+                <?php endif; ?>
                 <p style="margin-top:12px"><?= nl2br(h($p['description'] ?? '')) ?></p>
 
 

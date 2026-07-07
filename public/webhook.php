@@ -124,6 +124,21 @@ if (!$orderIds) {
     http_response_code(200);
     echo json_encode(['ok' => true, 'note' => 'no order ids']); exit;
 }
+// --- Determine marketing opt-in based on these orders ---
+$marketingOptIn = 0;
+try {
+    if ($orderIds) {
+        $placeholders = implode(',', array_fill(0, count($orderIds), '?'));
+        $stmt = db()->prepare("SELECT MAX(marketing_opt_in) AS m FROM orders WHERE id IN ($placeholders)");
+        $stmt->execute($orderIds);
+        if ($row = $stmt->fetch()) {
+            $marketingOptIn = (int)($row['m'] ?? 0);
+        }
+    }
+} catch (\Throwable $e) {
+    // If the column is missing or query fails, just leave as 0 and continue
+    $marketingOptIn = 0;
+}
 
 // --- Upsert customer ---
 $customerId = null;
@@ -133,11 +148,13 @@ if ($email) {
     if ($row = $q->fetch()) {
         $customerId = (int)$row['id'];
         if ($name) {
-            db()->prepare("UPDATE customers SET name=? WHERE id=?")->execute([$name, $customerId]);
+            db()->prepare("UPDATE customers SET name=?, marketing_opt_in=? WHERE id=?")->execute([$name, $marketingOptIn, $customerId]);
+        } else {
+            db()->prepare("UPDATE customers SET marketing_opt_in=? WHERE id=?")->execute([$marketingOptIn, $customerId]);
         }
     } else {
-        $ins = db()->prepare("INSERT INTO customers (name,email) VALUES (?,?)");
-        $ins->execute([$name ?: 'Guest', $email]);
+        $ins = db()->prepare("INSERT INTO customers (name,email,marketing_opt_in) VALUES (?,?,?)");
+        $ins->execute([$name ?: 'Guest', $email, $marketingOptIn]);
         $customerId = (int)db()->lastInsertId();
     }
 }

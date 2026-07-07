@@ -107,8 +107,7 @@ if ($ids) {
     <p>Your cart is empty.</p>
 <?php else: ?>
     <form method="post">
-        <!-- Honeypot anti-bot field -->
-        <input type="text" name="website" value="" style="display:none !important;" autocomplete="off" tabindex="-1">
+
         <input type="hidden" name="action" value="update">
         <table class="table">
             <tr>
@@ -150,8 +149,21 @@ if ($ids) {
         </table>
         <p>
             <button class="btn secondary" type="submit">Update</button>
-            <a class="btn" href="/checkout.php">Checkout</a>
         </p>
+    </form>
+    <!-- Checkout form: posts to checkout.php with marketing opt-in -->
+    <form method="post" action="/checkout.php" style="margin-top:1rem;">
+        <!-- Honeypot anti-bot field (same name used in checkout.php) -->
+        <input type="text" name="website" value="" style="display:none !important;" autocomplete="off" tabindex="-1">
+
+        <label style="display:block;margin-bottom:0.75rem;font-size:0.9rem;color:#4b5563;">
+            <input type="checkbox" name="marketing_opt_in" value="1" checked>
+            <span style="margin-left:0.4rem;">
+                Yes, I’d like to receive updates and special offers from Ava&nbsp;D&nbsp;Creates.
+            </span>
+        </label>
+
+        <button class="btn" type="submit">Checkout</button>
     </form>
 <?php endif; ?>
 

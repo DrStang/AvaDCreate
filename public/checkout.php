@@ -15,7 +15,7 @@ if (!empty($_POST['website'] ?? '')) {
     http_response_code(200);
     exit; // Do NOT create an order.
 }
-
+$marketingOptIn = !empty($_POST['marketing_opt_in']) ? 1 : 0;
 
 // 1) Read cart from session
 if (session_status() !== PHP_SESSION_ACTIVE) { session_start(); }
@@ -96,9 +96,9 @@ try {
         $created_ip = $_SERVER['REMOTE_ADDR'] ?? '';
         $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         $ins = db()->prepare("INSERT INTO orders
-        (customer_id, product_id, quantity, unit_price, total_amount, status, variant_json, created_ip, user_agent)
-        VALUES (?,?,?,?,?,'pending',?,?,?)");
-        $ins->execute([$customerId, $pid, $qty, $unit, $unit*$qty, json_encode($variant, JSON_UNESCAPED_UNICODE), $created_ip, $user_agent]);
+        (customer_id, product_id, quantity, unit_price, total_amount, status, variant_json, created_ip, user_agent, marketing_opt_in)
+        VALUES (?,?,?,?,?,'pending',?,?,?,?)");
+        $ins->execute([$customerId, $pid, $qty, $unit, $unit*$qty, json_encode($variant, JSON_UNESCAPED_UNICODE), $created_ip, $user_agent, $marketingOptIn,]);
         $oid = (int)db()->lastInsertId();
         $orderIds[] = $oid;
 
