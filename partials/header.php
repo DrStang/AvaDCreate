@@ -145,6 +145,7 @@ analytics_log('page_view', null, $_SESSION['user_id'] ?? null);
             <a class="pill-link <?= !empty($nav_active)&&$nav_active==='home'?'active':'' ?>" href="/index.php">Home</a>
             <a class="pill-link <?= !empty($nav_active)&&$nav_active==='bracelets'?'active':'' ?>" href="/category.php?c=bracelet">Bracelets</a>
             <a class="pill-link <?= !empty($nav_active)&&$nav_active==='necklaces'?'active':'' ?>" href="/category.php?c=necklace">Necklaces</a>
+            <a class="pill-link <?= !empty($nav_active)&&$nav_active==='reviews'?'active':'' ?>" href="/reviews.php">Reviews</a>
             <a class="pill-link <?= !empty($nav_active)&&$nav_active==='cart'?'active':'' ?>" href="/cart.php">Cart</a>
         </nav>
     </div>
